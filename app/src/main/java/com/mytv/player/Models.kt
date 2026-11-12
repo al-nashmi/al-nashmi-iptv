@@ -2,7 +2,7 @@ package com.mytv.player
 
 enum class Kind { LIVE, MOVIES, SERIES, EPISODE }
 
-data class Category(val id: String, val name: String)
+data class Category(val id: String, val name: String, val adult: Boolean = false)
 
 data class Item(
     val id: String,
@@ -13,6 +13,8 @@ data class Item(
     /** Direct stream URL (M3U). Xtream items build their URL from the account. */
     val url: String? = null,
     val ext: String? = null,
+    /** Panel marked this stream as adult ("is_adult"). */
+    val adult: Boolean = false,
 )
 
 data class Season(val name: String, val episodes: List<Item>)

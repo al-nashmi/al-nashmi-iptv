@@ -40,6 +40,11 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnAccount).setOnClickListener {
             startActivity(Intent(this, LoginActivity::class.java))
         }
+        findViewById<Button>(R.id.btnParental).setOnClickListener {
+            val open = { startActivity(Intent(this, ParentalActivity::class.java)) }
+            // The first visit asks the parent to choose a PIN; later visits require it.
+            if (Prefs.pin == null) Pin.create(this, open) else Pin.ask(this, open)
+        }
     }
 
     private fun open(kind: Kind) {

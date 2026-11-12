@@ -44,9 +44,20 @@
             android:text="@string/series" />
     </LinearLayout>
 
-    <Button
-        android:id="@+id/btnAccount"
-        style="@style/SmallButton"
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
-        android:text="@string/change_account" />
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnParental"
+            style="@style/SmallButton"
+            android:text="@string/parental" />
+
+        <Button
+            android:id="@+id/btnAccount"
+            style="@style/SmallButton"
+            android:text="@string/change_account" />
+    </LinearLayout>
 </LinearLayout>

@@ -18,10 +18,12 @@ object Repo {
     var account: Account? = null
         set(value) {
             field = value
-            synchronized(this) { cache.clear() }
+            synchronized(this) { cache.clear(); catCache.clear(); seriesCache.clear() }
         }
 
     private val cache = HashMap<Kind, List<Item>>()
+    private val catCache = HashMap<Kind, List<Category>>()
+    private val seriesCache = HashMap<String, JSONObject>()
 
     private val acc get() = account ?: error("no account")
     private val isM3u get() = acc.type == Account.TYPE_M3U
@@ -59,24 +61,35 @@ object Repo {
         return null to expText
     }
 
-    fun categories(kind: Kind): List<Category> {
-        if (isM3u) {
-            return allItems(kind).map { it.categoryId }.distinct().map { Category(it, it) }
+    /** Categories the family filter lets through. */
+    fun categories(kind: Kind): List<Category> =
+        rawCategories(kind).filterNot { FamilyFilter.blocks(it.name, it.adult) }
+
+    @Synchronized
+    private fun rawCategories(kind: Kind): List<Category> {
+        catCache[kind]?.let { return it }
+        val list = if (isM3u) {
+            allItems(kind).map { it.categoryId }.distinct().map { Category(it, it) }
+        } else {
+            val action = when (kind) {
+                Kind.LIVE -> "get_live_categories"
+                Kind.MOVIES -> "get_vod_categories"
+                else -> "get_series_categories"
+            }
+            val arr = jsonArray(api(action))
+            (0 until arr.length()).map {
+                val o = arr.getJSONObject(it)
+                Category(o.optString("category_id"), o.optString("category_name"), o.optString("is_adult") == "1")
+            }
         }
-        val action = when (kind) {
-            Kind.LIVE -> "get_live_categories"
-            Kind.MOVIES -> "get_vod_categories"
-            else -> "get_series_categories"
-        }
-        val arr = jsonArray(api(action))
-        return (0 until arr.length()).map {
-            val o = arr.getJSONObject(it)
-            Category(o.optString("category_id"), o.optString("category_name"))
-        }
+        catCache[kind] = list
+        return list
     }
 
     fun items(kind: Kind, categoryId: String): List<Item> {
-        val all = allItems(kind)
+        // Drop streams of hidden categories as well as streams whose own name is blocked.
+        val hiddenCats = rawCategories(kind).filter { FamilyFilter.blocks(it.name, it.adult) }.map { it.id }.toSet()
+        val all = allItems(kind).filter { it.categoryId !in hiddenCats && !FamilyFilter.blocks(it.name, it.adult) }
         return when (categoryId) {
             CAT_ALL -> all
             CAT_FAV -> {
@@ -105,20 +118,35 @@ object Repo {
         val arr = jsonArray(api(action))
         return (0 until arr.length()).map {
             val o = arr.getJSONObject(it)
+            val adult = o.optString("is_adult") == "1"
             when (kind) {
                 Kind.LIVE -> Item(o.optString("stream_id"), o.optString("name"),
-                    o.optString("stream_icon").ifBlank { null }, o.optString("category_id"), Kind.LIVE)
+                    o.optString("stream_icon").ifBlank { null }, o.optString("category_id"), Kind.LIVE, adult = adult)
                 Kind.MOVIES -> Item(o.optString("stream_id"), o.optString("name"),
                     o.optString("stream_icon").ifBlank { null }, o.optString("category_id"), Kind.MOVIES,
-                    ext = o.optString("container_extension").ifBlank { "mp4" })
+                    ext = o.optString("container_extension").ifBlank { "mp4" }, adult = adult)
                 else -> Item(o.optString("series_id"), o.optString("name"),
-                    o.optString("cover").ifBlank { null }, o.optString("category_id"), Kind.SERIES)
+                    o.optString("cover").ifBlank { null }, o.optString("category_id"), Kind.SERIES, adult = adult)
             }
         }
     }
 
+    /** The "info" block of a movie or series, used for its age rating. Null for M3U items. */
+    fun titleInfo(item: Item): JSONObject? {
+        if (isM3u || item.url != null) return null
+        return when (item.kind) {
+            Kind.MOVIES -> JSONObject(api("get_vod_info", "&vod_id=${item.id}")).optJSONObject("info")
+            Kind.SERIES -> seriesJson(item.id).optJSONObject("info")
+            else -> null
+        }
+    }
+
+    @Synchronized
+    private fun seriesJson(seriesId: String): JSONObject =
+        seriesCache.getOrPut(seriesId) { JSONObject(api("get_series_info", "&series_id=$seriesId")) }
+
     fun seriesInfo(seriesId: String): List<Season> {
-        val json = JSONObject(api("get_series_info", "&series_id=$seriesId"))
+        val json = seriesJson(seriesId)
         val seasons = mutableListOf<Season>()
         fun addSeason(key: String, arr: JSONArray) {
             val eps = (0 until arr.length()).map {

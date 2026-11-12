@@ -45,6 +45,9 @@
   #pinfo { top:32px; inset-inline-start:32px; }
   #perr { top:50%; left:50%; transform:translate(-50%,-50%); color:var(--err); }
   #phelp { position:absolute; bottom:16px; inset-inline-start:16px; color:var(--dim); font-size:14px; background:#0008; padding:6px 10px; border-radius:6px; }
+  .checks label { display:block; margin-top:6px; }
+  .lbl { margin-top:20px; }
+  #parental { padding-top:40px; }
   @media (max-width: 700px) { .browse { flex-direction:column; } .big { width:140px; height:90px; font-size:18px; } }
 </style>
 </head>
@@ -83,7 +86,44 @@
     <button class="big xonly" data-kind="MOVIES">الأفلام</button>
     <button class="big xonly" data-kind="SERIES">المسلسلات</button>
   </div>
-  <button class="small" id="btnAcc" style="margin-top:32px">تغيير الحساب</button>
+  <div style="margin-top:32px; display:flex; gap:16px">
+    <button class="small" id="btnParental">الرقابة العائلية</button>
+    <button class="small" id="btnAcc">تغيير الحساب</button>
+  </div>
+</section>
+
+<section id="parental" class="screen center" style="overflow-y:auto; justify-content:flex-start">
+  <h1>الرقابة العائلية</h1>
+  <div class="form" style="width:min(640px,100%)">
+    <div class="radios checks">
+      <label><input type="checkbox" id="pcFilter"> حظر القنوات والأفلام الإباحية (بكل اللغات)</label>
+      <label><input type="checkbox" id="pcMusic"> حظر قنوات الأغاني والرقص والكليبات</label>
+      <label><input type="checkbox" id="pcWarn"> تنبيه قبل تشغيل أي فيلم أو مسلسل مصنّف +13</label>
+    </div>
+    <div class="dim lbl">العمر المسموح للأفلام والمسلسلات:</div>
+    <div class="radios" id="pcAge">
+      <label><input type="radio" name="age" value="0"> للجميع</label>
+      <label><input type="radio" name="age" value="7"> +7</label>
+      <label><input type="radio" name="age" value="12"> +12</label>
+      <label><input type="radio" name="age" value="15"> +15</label>
+      <label><input type="radio" name="age" value="18"> بدون حد</label>
+    </div>
+    <div class="dim lbl">إذا كان التصنيف العمري غير معروف:</div>
+    <div class="radios">
+      <label><input type="radio" name="unk" value="allow"> اسمح</label>
+      <label><input type="radio" name="unk" value="warn"> نبّه</label>
+      <label><input type="radio" name="unk" value="block"> امنع</label>
+    </div>
+    <div class="dim lbl">كلمات إضافية للحظر (افصل بينها بفاصلة):</div>
+    <input class="input" id="pcWords" style="direction:rtl; text-align:right">
+    <div class="dim lbl">مفتاح TMDB (اختياري، مجاني من themoviedb.org) لمعرفة تصنيف الأفلام اللي ما لها تصنيف عند مزود الخدمة:</div>
+    <input class="input" id="pcTmdb">
+    <div style="margin-top:24px; display:flex; gap:16px; justify-content:center">
+      <button class="small" id="pcSave">حفظ</button>
+      <button class="small" id="pcPin">تغيير الرمز</button>
+      <button class="small" id="pcBack">رجوع</button>
+    </div>
+  </div>
 </section>
 
 <section id="browse" class="screen browse">
@@ -129,6 +169,133 @@ let cache = {};
 let kind = 'LIVE', cats = [], catItems = [], shown = [], curCat = null;
 let queue = [], qi = 0, qlive = false, hls = null, mts = null, prevScreen = 'browse';
 
+// ---- parental controls (same rules as FamilyFilter.kt / AgeRating.kt / Guard.kt) ----
+let pc = Object.assign({ filterOn: true, blockMusic: true, warnMature: true, maxAge: 18, unknown: 'warn', custom: '', tmdb: '', pin: null }, store.get('pc', {}));
+const savePc = () => store.set('pc', pc);
+let words = { adult: [], music: [], allow: [] };
+let catCache = {}, seriesCache = {}, ratingCache = {};
+
+const normalize = (s) => s.toLowerCase().replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/[ً-ٰٟـ]/g, '');
+function matcher(word) {
+  const w = normalize(word.trim());
+  const esc = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const latin = [...w].every(c => c.codePointAt(0) < 0x250);
+  return latin ? new RegExp('(?<![\\p{L}\\p{N}])' + esc + '(?![\\p{L}\\p{N}])', 'u') : new RegExp(esc, 'u');
+}
+async function loadWords() {
+  const j = await (await fetch('/filter_words.json')).json();
+  words = { adult: j.adult.map(matcher), music: j.music.map(matcher), allow: j.allow.map(matcher) };
+}
+const customWords = () => pc.custom.split(/[,،\n]/).map(s => s.trim()).filter(Boolean).map(matcher);
+const isAdult = (name) => !!name && words.adult.some(r => r.test(normalize(name)));
+function blocks(name, adultFlag) {
+  if (!pc.filterOn) return false;
+  if (adultFlag) return true;
+  if (!name) return false;
+  const n = normalize(name);
+  if (words.adult.some(r => r.test(n)) || customWords().some(r => r.test(n))) return true;
+  return pc.blockMusic && words.music.some(r => r.test(n)) && !words.allow.some(r => r.test(n));
+}
+
+const ageCodes = { 'G': 0, 'U': 0, 'E': 0, 'AL': 0, 'TV-Y': 0, 'TV-G': 0, 'TV-Y7': 7, 'TV-Y7-FV': 7, 'PG': 8, 'TV-PG': 10, '12A': 12,
+  'PG-13': 13, 'TV-14': 14, 'M': 15, 'MA15+': 15, 'R': 17, 'TV-MA': 17, 'NC-17': 18, 'X': 18, 'R18': 18, 'R18+': 18 };
+function parseAge(raw) {
+  const s = String(raw || '').trim().toUpperCase().replace(/^RATED/, '').trim();
+  if (!s) return null;
+  if (s in ageCodes) return ageCodes[s];
+  const m = s.match(/\d{1,2}/);
+  return m && +m[0] <= 21 ? +m[0] : null;
+}
+async function seriesJson(id) { return seriesCache[id] || (seriesCache[id] = await api('get_series_info', '&series_id=' + id)); }
+async function titleInfo(it) {
+  if (acc.type === 'm3u' || it.url) return null;
+  if (it.kind === 'MOVIES') return (await api('get_vod_info', '&vod_id=' + it.id)).info || null;
+  if (it.kind === 'SERIES') return (await seriesJson(it.id)).info || null;
+  return null;
+}
+async function tmdbRating(it, info) {
+  const key = encodeURIComponent(pc.tmdb.trim()), tv = it.kind === 'SERIES', apiBase = 'https://api.themoviedb.org/3';
+  let id = info && (info.tmdb_id || info.tmdb);
+  if (!id || id === '0') {
+    const year = (it.name.match(/\b(19|20)\d{2}\b/) || [])[0];
+    const q = it.name.replace(/^[A-Za-z]{2,3}\s*[-|:]\s*/, '').replace(/[\[(|].*?[\])|]/g, ' ').replace(/\b(19|20)\d{2}\b/g, ' ').trim();
+    const yp = year ? (tv ? '&first_air_date_year=' : '&year=') + year : '';
+    const first = (JSON.parse(await getText(`${apiBase}/search/${tv ? 'tv' : 'movie'}?api_key=${key}&query=${encodeURIComponent(q)}${yp}`)).results || [])[0];
+    if (!first) return null;
+    if (first.adult) return [18, 'Adult'];
+    id = first.id;
+  }
+  const by = {};
+  if (tv) (JSON.parse(await getText(`${apiBase}/tv/${id}/content_ratings?api_key=${key}`)).results || []).forEach(r => { if (r.rating) by[r.iso_3166_1] = r.rating; });
+  else (JSON.parse(await getText(`${apiBase}/movie/${id}/release_dates?api_key=${key}`)).results || []).forEach(r => {
+    const c = (r.release_dates || []).map(d => d.certification).find(Boolean); if (c) by[r.iso_3166_1] = c;
+  });
+  for (const c of ['SA', 'AE', 'US', 'GB', ...Object.keys(by)]) { const a = parseAge(by[c]); if (by[c] && a !== null) return [a, `${by[c]} (${c})`]; }
+  return null;
+}
+async function lookupRating(it) {
+  const key = it.kind + ':' + it.id;
+  if (ratingCache[key]) return ratingCache[key];
+  let age = null, label = null;
+  let info = null;
+  try { info = await titleInfo(it); } catch {}
+  if (info) {
+    for (const f of ['mpaa_rating', 'age', 'certification', 'content_rating', 'rating_mpaa']) {
+      const a = parseAge(info[f]); if (a !== null) { age = a; label = info[f]; break; }
+    }
+    if (isAdult(info.genre)) { age = 18; label = info.genre; }
+  }
+  if (age === null && pc.tmdb.trim()) { try { const t = await tmdbRating(it, info); if (t) [age, label] = t; } catch {} }
+  return ratingCache[key] = { age, label: (label && String(label).trim()) || 'غير مصنّف' };
+}
+function askPin() {
+  if (!pc.pin) return true;
+  const v = prompt('أدخل رمز الرقابة العائلية');
+  if (v === null) return false;
+  if (v === pc.pin) return true;
+  alert('الرمز غير صحيح'); return false;
+}
+function createPin() {
+  const a = prompt('اختر رمز الرقابة العائلية (4 أرقام أو أكثر)');
+  if (a === null) return false;
+  if (a.length < 4) { alert('الرمز لازم يكون 4 أرقام أو أكثر'); return false; }
+  if (prompt('أعد كتابة الرمز') !== a) { alert('الرمزين غير متطابقين'); return false; }
+  pc.pin = a; savePc(); return true;
+}
+function toast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#000d;padding:12px 20px;border-radius:8px;z-index:9;font-size:18px';
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2500);
+}
+async function guard(it, proceed) {
+  if (it.kind !== 'MOVIES' && it.kind !== 'SERIES') return proceed();
+  if (pc.maxAge >= 18 && !pc.warnMature) return proceed();
+  toast('جاري التحقق من التصنيف العمري…');
+  const r = await lookupRating(it), limit = pc.maxAge, age = r.age;
+  const blocked = (msg) => {
+    if (!pc.pin) return alert('محظور: ' + msg + '\n\nللتجاوز، عيّن رمز PIN من شاشة الرقابة العائلية.');
+    if (confirm('محظور: ' + msg + '\n\nتبي تفتحه بالرمز؟') && askPin()) proceed();
+  };
+  if (age !== null && age > limit) return blocked(`هذا المحتوى مصنّف ${r.label} (+${age})، وهو أعلى من العمر المسموح (+${limit}).`);
+  if (age === null && limit < 18) {
+    if (pc.unknown === 'block') return blocked('التصنيف العمري لهذا المحتوى غير معروف.');
+    if (pc.unknown === 'warn') { if (confirm('التصنيف العمري لهذا المحتوى غير معروف. تبي تكمل؟')) proceed(); return; }
+    return proceed();
+  }
+  if (age !== null && age >= 13 && pc.warnMature) { if (confirm(`تنبيه: هذا المحتوى مصنّف ${r.label} (+${age}). تبي تكمل؟`)) proceed(); return; }
+  if (age !== null) toast('التصنيف العمري: ' + r.label);
+  proceed();
+}
+function openParental() {
+  if (!(pc.pin ? askPin() : createPin())) return;
+  $('pcFilter').checked = pc.filterOn; $('pcMusic').checked = pc.blockMusic; $('pcWarn').checked = pc.warnMature;
+  document.querySelector(`input[name=age][value="${pc.maxAge}"]`).checked = true;
+  document.querySelector(`input[name=unk][value="${pc.unknown}"]`).checked = true;
+  $('pcWords').value = pc.custom; $('pcTmdb').value = pc.tmdb;
+  show('parental');
+}
+
 function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id)); }
 function describe(e) { return 'حدث خطأ: ' + (e && e.message || e); }
 
@@ -162,25 +329,28 @@ async function allItems(k) {
     const action = { LIVE: 'get_live_streams', MOVIES: 'get_vod_streams', SERIES: 'get_series' }[k];
     const arr = await api(action);
     list = (Array.isArray(arr) ? arr : []).map(o => k === 'SERIES'
-      ? { id: String(o.series_id), name: o.name, logo: o.cover, cat: String(o.category_id), kind: k }
-      : { id: String(o.stream_id), name: o.name, logo: o.stream_icon, cat: String(o.category_id), kind: k, ext: o.container_extension || 'mp4' });
+      ? { id: String(o.series_id), name: o.name, logo: o.cover, cat: String(o.category_id), kind: k, adult: String(o.is_adult) === '1' }
+      : { id: String(o.stream_id), name: o.name, logo: o.stream_icon, cat: String(o.category_id), kind: k, ext: o.container_extension || 'mp4', adult: String(o.is_adult) === '1' });
   }
   return cache[k] = list;
 }
-async function categories(k) {
-  if (acc.type === 'm3u') return [...new Set((await allItems(k)).map(i => i.cat))].map(c => ({ id: c, name: c }));
+async function rawCategories(k) {
+  if (catCache[k]) return catCache[k];
+  if (acc.type === 'm3u') return catCache[k] = [...new Set((await allItems(k)).map(i => i.cat))].map(c => ({ id: c, name: c }));
   const action = { LIVE: 'get_live_categories', MOVIES: 'get_vod_categories', SERIES: 'get_series_categories' }[k];
   const arr = await api(action);
-  return (Array.isArray(arr) ? arr : []).map(o => ({ id: String(o.category_id), name: o.category_name }));
+  return catCache[k] = (Array.isArray(arr) ? arr : []).map(o => ({ id: String(o.category_id), name: o.category_name, adult: String(o.is_adult) === '1' }));
 }
+async function categories(k) { return (await rawCategories(k)).filter(c => !blocks(c.name, c.adult)); }
 async function items(k, cat) {
-  const all = await allItems(k);
+  const hidden = new Set((await rawCategories(k)).filter(c => blocks(c.name, c.adult)).map(c => c.id));
+  const all = (await allItems(k)).filter(i => !hidden.has(i.cat) && !blocks(i.name, i.adult));
   if (cat === '__all__') return all;
   if (cat === '__fav__') return all.filter(i => favs.has(i.kind + ':' + i.id));
   return all.filter(i => i.cat === cat);
 }
 async function seriesInfo(id) {
-  const j = await api('get_series_info', '&series_id=' + id);
+  const j = await seriesJson(id);
   const seasons = [];
   const add = (key, arr) => {
     const eps = (arr || []).map(e => ({ id: String(e.id), name: e.title || ('الحلقة ' + e.episode_num), logo: e.info && e.info.movie_image, kind: 'EPISODE', ext: e.container_extension || 'mp4' }));
@@ -298,9 +468,8 @@ function toggleFav(it, r) {
 }
 
 function openItem(idx) {
-  const it = shown[idx];
-  if (it.kind === 'SERIES') return openSeries(it);
-  play(shown, idx, it.kind === 'LIVE', 'browse');
+  const it = shown[idx], list = shown;
+  guard(it, () => it.kind === 'SERIES' ? openSeries(it) : play(list, idx, it.kind === 'LIVE', 'browse'));
 }
 
 async function openSeries(it) {
@@ -395,7 +564,7 @@ $('btnLogin').onclick = async () => {
     a = { type: 'xtream', server: withScheme($('server').value), user: $('user').value.trim(), pass: $('pass').value.trim(), format: document.querySelector('input[name=fmt]:checked').value };
   }
   $('lerr').textContent = 'جاري التحقق…'; $('btnLogin').disabled = true;
-  const prev = acc; acc = a; cache = {};
+  const prev = acc; acc = a; cache = {}; catCache = {}; seriesCache = {}; ratingCache = {};
   try {
     const [err, info] = await doLogin();
     if (err) { acc = prev; $('lerr').textContent = err; }
@@ -412,7 +581,18 @@ document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => b.datase
 let searchTimer;
 $('search').oninput = () => { clearTimeout(searchTimer); searchTimer = setTimeout(applyFilter, 200); };
 
-if (acc) goHome(); else show('login');
+$('btnParental').onclick = openParental;
+$('pcBack').onclick = goHome;
+$('pcPin').onclick = () => { if (createPin()) toast('تم تغيير الرمز'); };
+$('pcSave').onclick = () => {
+  pc.filterOn = $('pcFilter').checked; pc.blockMusic = $('pcMusic').checked; pc.warnMature = $('pcWarn').checked;
+  pc.maxAge = +document.querySelector('input[name=age]:checked').value;
+  pc.unknown = document.querySelector('input[name=unk]:checked').value;
+  pc.custom = $('pcWords').value; pc.tmdb = $('pcTmdb').value.trim();
+  savePc(); toast('تم الحفظ'); goHome();
+};
+
+loadWords().catch(() => {}).finally(() => { if (acc) goHome(); else show('login'); });
 </script>
 </body>
 </html>

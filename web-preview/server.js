@@ -5,7 +5,7 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 8765;
+const PORT = Number(process.env.PORT) || 8766;
 const UA = 'VLC/3.0.20 LibVLC/3.0.20';
 
 function fetchUp(url, headers, cb, hops = 0) {
@@ -31,6 +31,11 @@ http.createServer((req, res) => {
   if (q.pathname === '/' || q.pathname === '/index.html') {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     return fs.createReadStream(path.join(__dirname, 'index.html')).pipe(res);
+  }
+  if (q.pathname === '/filter_words.json') {
+    // Same word list the Android app ships in its assets.
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    return fs.createReadStream(path.join(__dirname, '..', 'app', 'src', 'main', 'assets', 'filter_words.json')).pipe(res);
   }
   if (q.pathname !== '/p') { res.writeHead(404); return res.end(); }
 

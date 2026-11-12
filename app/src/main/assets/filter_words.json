@@ -1,0 +1,30 @@
+{
+  "_note": "Words are matched against category, channel and title names after lower-casing and Arabic letter normalization. Latin-only words match whole words only (so 'sex' does not hit 'Essex'); words in other scripts match anywhere in the name.",
+  "adult": [
+    "xxx", "porn", "porno", "pornhub", "adult", "adults", "adulte", "adultes", "adulto", "adultos", "adulti",
+    "erotic", "erotica", "erotik", "erotico", "erotique", "erotiek", "erotyka", "erotizm",
+    "sex", "sexy", "sexo", "hentai", "milf", "nsfw", "onlyfans", "striptease", "stripclub", "camgirl", "camgirls",
+    "playboy", "penthouse", "hustler", "brazzers", "dorcel", "babestation", "redlight", "red light", "vivid", "bangbros",
+    "18+", "+18", "18 plus", "for adults", "adults only", "only adults", "erwachsene", "yetiskin", "yetişkin",
+    "dorosłych", "volwassenen", "dewasa", "người lớn",
+    "взросл", "эрот", "порно", "секс", "18 плюс",
+    "للكبار", "للكبار فقط", "بالغين", "للبالغين", "اباحي", "اباحيه", "اباحية", "سكس", "١٨+", "+١٨",
+    "سکس", "بزرگسال",
+    "वयस्क", "成人", "色情", "アダルト", "성인", "ενηλίκων", "למבוגרים", "ผู้ใหญ่"
+  ],
+  "music": [
+    "music", "musik", "musique", "musica", "música", "muzik", "müzik", "muziek", "muzyka", "musikk",
+    "музык", "муз-тв", "муз тв",
+    "موسيقى", "موسيقي", "موسيقا", "موزیک", "اغاني", "اغانى", "اغنيه", "اغنية", "طرب", "طربيه", "طربية",
+    "كليب", "كليبات", "مزيكا", "روتانا كليب", "ميلودي", "وناسه", "وناسة", "دبكه", "دبكة", "رقص", "شرقي رقص", "آهنگ", "اهنگ",
+    "clip", "clips", "videoclip", "videoclips", "mtv", "vh1", "mezzo", "trace tv", "trace urban", "stingray", "clubbing",
+    "dance", "dancing", "danza", "baile", "bailar", "tanz", "belly dance", "bellydance", "raqs", "karaoke", "كاريوكي",
+    "mazzika", "rotana clip", "rotana music", "rotana mousica", "melody tv", "melody hits", "wanasah", "aghani", "arabica tv",
+    "4fun", "b4u music", "9xm", "zee music", "mastiii", "sangeet", "power türk", "kral tv", "dream türk", "number1",
+    "dj", "deejay", "concert", "concerts", "حفلات", "حفلة",
+    "संगीत", "गाने", "नृत्य", "音乐", "音楽", "음악"
+  ],
+  "allow": [
+    "quran", "koran", "qur'an", "قران", "القران", "قرءان", "تلاوه", "تلاوة", "اذاعه القران", "اذان", "makkah", "مكه", "مكة", "madinah", "المدينه"
+  ]
+}

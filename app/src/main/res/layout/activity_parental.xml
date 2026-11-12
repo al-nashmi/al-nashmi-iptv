@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="40dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/parental"
+            android:textColor="@color/text"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="640dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:orientation="vertical">
+
+            <CheckBox
+                android:id="@+id/cbFilter"
+                style="@style/Radio"
+                android:text="@string/filter_on" />
+
+            <CheckBox
+                android:id="@+id/cbMusic"
+                style="@style/Radio"
+                android:layout_marginTop="8dp"
+                android:text="@string/block_music" />
+
+            <CheckBox
+                android:id="@+id/cbWarn"
+                style="@style/Radio"
+                android:layout_marginTop="8dp"
+                android:text="@string/warn_mature" />
+
+            <TextView
+                style="@style/Label"
+                android:text="@string/age_label" />
+
+            <RadioGroup
+                android:id="@+id/ageGroup"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <RadioButton android:id="@+id/age0" style="@style/Radio" android:text="@string/age_all" />
+                <RadioButton android:id="@+id/age7" style="@style/Radio" android:text="@string/age_7" />
+                <RadioButton android:id="@+id/age12" style="@style/Radio" android:text="@string/age_12" />
+                <RadioButton android:id="@+id/age15" style="@style/Radio" android:text="@string/age_15" />
+                <RadioButton android:id="@+id/age18" style="@style/Radio" android:text="@string/age_none" />
+            </RadioGroup>
+
+            <TextView
+                style="@style/Label"
+                android:text="@string/unknown_label" />
+
+            <RadioGroup
+                android:id="@+id/unknownGroup"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <RadioButton android:id="@+id/unkAllow" style="@style/Radio" android:text="@string/unknown_allow" />
+                <RadioButton android:id="@+id/unkWarn" style="@style/Radio" android:text="@string/unknown_warn" />
+                <RadioButton android:id="@+id/unkBlock" style="@style/Radio" android:text="@string/unknown_block" />
+            </RadioGroup>
+
+            <TextView
+                style="@style/Label"
+                android:text="@string/custom_words_label" />
+
+            <EditText
+                android:id="@+id/customWords"
+                style="@style/Input"
+                android:layout_height="wrap_content"
+                android:minHeight="56dp"
+                android:inputType="text"
+                android:singleLine="false" />
+
+            <TextView
+                style="@style/Label"
+                android:text="@string/tmdb_label" />
+
+            <EditText
+                android:id="@+id/tmdbKey"
+                style="@style/Input"
+                android:inputType="text"
+                android:textDirection="ltr" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="24dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnSave"
+                    style="@style/SmallButton"
+                    android:text="@string/save" />
+
+                <Button
+                    android:id="@+id/btnPin"
+                    style="@style/SmallButton"
+                    android:text="@string/change_pin" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

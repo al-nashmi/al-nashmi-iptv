@@ -39,6 +39,35 @@ object Prefs {
         sp.edit().remove("type").apply()
     }
 
+    // ---- Parental controls ----
+    var filterOn: Boolean
+        get() = sp.getBoolean("filter_on", true)
+        set(v) = sp.edit().putBoolean("filter_on", v).apply()
+    var blockMusic: Boolean
+        get() = sp.getBoolean("block_music", true)
+        set(v) = sp.edit().putBoolean("block_music", v).apply()
+    /** Highest allowed age rating for movies and series; 18 means no limit. */
+    var maxAge: Int
+        get() = sp.getInt("max_age", 18)
+        set(v) = sp.edit().putInt("max_age", v).apply()
+    /** What to do with an unrated title while an age limit is set: "allow", "warn" or "block". */
+    var unknownPolicy: String
+        get() = sp.getString("unknown_policy", "warn")!!
+        set(v) = sp.edit().putString("unknown_policy", v).apply()
+    /** Show a warning before titles rated 13+ even when there is no age limit. */
+    var warnMature: Boolean
+        get() = sp.getBoolean("warn_mature", true)
+        set(v) = sp.edit().putBoolean("warn_mature", v).apply()
+    var customWords: String
+        get() = sp.getString("custom_words", "")!!
+        set(v) = sp.edit().putString("custom_words", v).apply()
+    var tmdbKey: String
+        get() = sp.getString("tmdb_key", "")!!
+        set(v) = sp.edit().putString("tmdb_key", v).apply()
+    var pin: String?
+        get() = sp.getString("pin", null)
+        set(v) = sp.edit().putString("pin", v).apply()
+
     // Favorites are stored as "KIND:id" keys.
     private fun favKey(item: Item) = "${item.kind}:${item.id}"
 

@@ -128,17 +128,17 @@ class BrowseActivity : AppCompatActivity() {
         }
     }
 
-    private fun openItem(pos: Int, item: Item) {
+    private fun openItem(pos: Int, item: Item) = Guard.open(this, item) {
         if (item.kind == Kind.SERIES) {
             startActivity(Intent(this, SeriesActivity::class.java)
                 .putExtra("id", item.id)
                 .putExtra("name", item.name))
-            return
+        } else {
+            PlayQueue.items = itemAdapter.items
+            PlayQueue.index = pos
+            PlayQueue.live = item.kind == Kind.LIVE
+            startActivity(Intent(this, PlayerActivity::class.java))
         }
-        PlayQueue.items = itemAdapter.items
-        PlayQueue.index = pos
-        PlayQueue.live = item.kind == Kind.LIVE
-        startActivity(Intent(this, PlayerActivity::class.java))
     }
 
     private fun toggleFavorite(pos: Int, item: Item) {

@@ -33,6 +33,9 @@
             android:windowSoftInputMode="stateHidden" />
         <activity android:name=".SeriesActivity" />
         <activity
+            android:name=".ParentalActivity"
+            android:windowSoftInputMode="stateHidden|adjustResize" />
+        <activity
             android:name=".PlayerActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
             android:theme="@style/PlayerTheme" />

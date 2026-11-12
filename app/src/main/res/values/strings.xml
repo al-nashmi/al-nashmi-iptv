@@ -24,4 +24,46 @@
     <string name="m3u_hint">رابط قائمة M3U</string>
     <string name="format_label">صيغة البث المباشر:</string>
     <string name="login">دخول</string>
+
+    <string name="parental">الرقابة العائلية</string>
+    <string name="checking_rating">جاري التحقق من التصنيف العمري…</string>
+    <string name="rating_too_high">هذا المحتوى مصنّف %1$s (+%2$d)، وهو أعلى من العمر المسموح (+%3$d).</string>
+    <string name="rating_unknown">التصنيف العمري لهذا المحتوى غير معروف.</string>
+    <string name="rating_unknown_warn">التصنيف العمري لهذا المحتوى غير معروف. تبي تكمل؟</string>
+    <string name="rating_warn">تنبيه: هذا المحتوى مصنّف %1$s (+%2$d). تبي تكمل؟</string>
+    <string name="rating_ok">التصنيف العمري: %1$s</string>
+    <string name="warning">تنبيه</string>
+    <string name="blocked">محظور</string>
+    <string name="continue_">متابعة</string>
+    <string name="cancel">إلغاء</string>
+    <string name="ok">موافق</string>
+    <string name="unlock_with_pin">فتح بالرمز</string>
+    <string name="set_pin_to_unlock">للتجاوز، عيّن رمز PIN من شاشة الرقابة العائلية.</string>
+    <string name="enter_pin">أدخل رمز الرقابة العائلية</string>
+    <string name="pin_hint">الرمز</string>
+    <string name="set_pin">اختر رمز الرقابة العائلية</string>
+    <string name="new_pin_hint">الرمز الجديد (4 أرقام أو أكثر)</string>
+    <string name="confirm_pin_hint">أعد كتابة الرمز</string>
+    <string name="wrong_pin">الرمز غير صحيح</string>
+    <string name="pin_too_short">الرمز لازم يكون 4 أرقام أو أكثر</string>
+    <string name="pin_mismatch">الرمزين غير متطابقين</string>
+    <string name="change_pin">تغيير الرمز</string>
+    <string name="save">حفظ</string>
+    <string name="saved">تم الحفظ</string>
+
+    <string name="filter_on">حظر القنوات والأفلام الإباحية (بكل اللغات)</string>
+    <string name="block_music">حظر قنوات الأغاني والرقص والكليبات</string>
+    <string name="warn_mature">تنبيه قبل تشغيل أي فيلم أو مسلسل مصنّف +13</string>
+    <string name="age_label">العمر المسموح للأفلام والمسلسلات:</string>
+    <string name="age_all">للجميع</string>
+    <string name="age_7">+7</string>
+    <string name="age_12">+12</string>
+    <string name="age_15">+15</string>
+    <string name="age_none">بدون حد</string>
+    <string name="unknown_label">إذا كان التصنيف العمري غير معروف:</string>
+    <string name="unknown_allow">اسمح</string>
+    <string name="unknown_warn">نبّه</string>
+    <string name="unknown_block">امنع</string>
+    <string name="custom_words_label">كلمات إضافية للحظر (افصل بينها بفاصلة):</string>
+    <string name="tmdb_label">مفتاح TMDB (اختياري، مجاني من themoviedb.org) لمعرفة تصنيف الأفلام اللي ما لها تصنيف عند مزود الخدمة:</string>
 </resources>
