@@ -40,12 +40,6 @@ object Prefs {
     }
 
     // ---- Parental controls ----
-    var filterOn: Boolean
-        get() = sp.getBoolean("filter_on", true)
-        set(v) = sp.edit().putBoolean("filter_on", v).apply()
-    var blockMusic: Boolean
-        get() = sp.getBoolean("block_music", true)
-        set(v) = sp.edit().putBoolean("block_music", v).apply()
     /** Highest allowed age rating for movies and series; 18 means no limit. */
     var maxAge: Int
         get() = sp.getInt("max_age", 18)
@@ -59,7 +53,8 @@ object Prefs {
         get() = sp.getBoolean("warn_mature", true)
         set(v) = sp.edit().putBoolean("warn_mature", v).apply()
     var customWords: String
-        get() = sp.getString("custom_words", "")!!
+        // Until the parent edits it, the list starts with the suggested words.
+        get() = sp.getString("custom_words", null) ?: FamilyFilter.suggested
         set(v) = sp.edit().putString("custom_words", v).apply()
     var tmdbKey: String
         get() = sp.getString("tmdb_key", "")!!

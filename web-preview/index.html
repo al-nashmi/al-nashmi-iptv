@@ -95,9 +95,8 @@
 <section id="parental" class="screen center" style="overflow-y:auto; justify-content:flex-start">
   <h1>الرقابة العائلية</h1>
   <div class="form" style="width:min(640px,100%)">
-    <div class="radios checks">
-      <label><input type="checkbox" id="pcFilter"> حظر القنوات والأفلام الإباحية (بكل اللغات)</label>
-      <label><input type="checkbox" id="pcMusic"> حظر قنوات الأغاني والرقص والكليبات</label>
+    <div style="background:var(--panel); color:var(--gold); padding:14px; border-radius:10px">🔒 المحتوى الإباحي وقنوات الأغاني والرقص والكليبات محظورة دائماً بكل اللغات، وما يمكن فتحها.</div>
+    <div class="radios checks" style="margin-top:12px">
       <label><input type="checkbox" id="pcWarn"> تنبيه قبل تشغيل أي فيلم أو مسلسل مصنّف +13</label>
     </div>
     <div class="dim lbl">العمر المسموح للأفلام والمسلسلات:</div>
@@ -114,7 +113,7 @@
       <label><input type="radio" name="unk" value="warn"> نبّه</label>
       <label><input type="radio" name="unk" value="block"> امنع</label>
     </div>
-    <div class="dim lbl">كلمات إضافية للحظر (افصل بينها بفاصلة):</div>
+    <div class="dim lbl">كلمات إضافية للحظر (القائمة المقترحة، وتقدر تضيف أو تحذف، وافصل بين الكلمات بفاصلة):</div>
     <input class="input" id="pcWords" style="direction:rtl; text-align:right">
     <div class="dim lbl">مفتاح TMDB (اختياري، مجاني من themoviedb.org) لمعرفة تصنيف الأفلام اللي ما لها تصنيف عند مزود الخدمة:</div>
     <input class="input" id="pcTmdb">
@@ -170,9 +169,10 @@ let kind = 'LIVE', cats = [], catItems = [], shown = [], curCat = null;
 let queue = [], qi = 0, qlive = false, hls = null, mts = null, prevScreen = 'browse';
 
 // ---- parental controls (same rules as FamilyFilter.kt / AgeRating.kt / Guard.kt) ----
-let pc = Object.assign({ filterOn: true, blockMusic: true, warnMature: true, maxAge: 18, unknown: 'warn', custom: '', tmdb: '', pin: null }, store.get('pc', {}));
+// custom stays null until the parent edits it, so it starts as the suggested list.
+let pc = Object.assign({ warnMature: true, maxAge: 18, unknown: 'warn', custom: null, tmdb: '', pin: null }, store.get('pc', {}));
 const savePc = () => store.set('pc', pc);
-let words = { adult: [], music: [], allow: [] };
+let words = { adult: [], music: [], allow: [] }, suggested = '';
 let catCache = {}, seriesCache = {}, ratingCache = {};
 
 const normalize = (s) => s.toLowerCase().replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/[ً-ٰٟـ]/g, '');
@@ -185,16 +185,22 @@ function matcher(word) {
 async function loadWords() {
   const j = await (await fetch('/filter_words.json')).json();
   words = { adult: j.adult.map(matcher), music: j.music.map(matcher), allow: j.allow.map(matcher) };
+  suggested = j.suggested.join(', ');
 }
-const customWords = () => pc.custom.split(/[,،\n]/).map(s => s.trim()).filter(Boolean).map(matcher);
+const customText = () => pc.custom ?? suggested;
+let customSrc = null, customRx = [];
+function customWords() {
+  if (customText() !== customSrc) { customSrc = customText(); customRx = customSrc.split(/[,،\n]/).map(s => s.trim()).filter(Boolean).map(matcher); }
+  return customRx;
+}
 const isAdult = (name) => !!name && words.adult.some(r => r.test(normalize(name)));
+// Adult and music/dance blocking is permanent and has no switch.
 function blocks(name, adultFlag) {
-  if (!pc.filterOn) return false;
   if (adultFlag) return true;
   if (!name) return false;
   const n = normalize(name);
   if (words.adult.some(r => r.test(n)) || customWords().some(r => r.test(n))) return true;
-  return pc.blockMusic && words.music.some(r => r.test(n)) && !words.allow.some(r => r.test(n));
+  return words.music.some(r => r.test(n)) && !words.allow.some(r => r.test(n));
 }
 
 const ageCodes = { 'G': 0, 'U': 0, 'E': 0, 'AL': 0, 'TV-Y': 0, 'TV-G': 0, 'TV-Y7': 7, 'TV-Y7-FV': 7, 'PG': 8, 'TV-PG': 10, '12A': 12,
@@ -289,10 +295,10 @@ async function guard(it, proceed) {
 }
 function openParental() {
   if (!(pc.pin ? askPin() : createPin())) return;
-  $('pcFilter').checked = pc.filterOn; $('pcMusic').checked = pc.blockMusic; $('pcWarn').checked = pc.warnMature;
+  $('pcWarn').checked = pc.warnMature;
   document.querySelector(`input[name=age][value="${pc.maxAge}"]`).checked = true;
   document.querySelector(`input[name=unk][value="${pc.unknown}"]`).checked = true;
-  $('pcWords').value = pc.custom; $('pcTmdb').value = pc.tmdb;
+  $('pcWords').value = customText(); $('pcTmdb').value = pc.tmdb;
   show('parental');
 }
 
@@ -585,7 +591,7 @@ $('btnParental').onclick = openParental;
 $('pcBack').onclick = goHome;
 $('pcPin').onclick = () => { if (createPin()) toast('تم تغيير الرمز'); };
 $('pcSave').onclick = () => {
-  pc.filterOn = $('pcFilter').checked; pc.blockMusic = $('pcMusic').checked; pc.warnMature = $('pcWarn').checked;
+  pc.warnMature = $('pcWarn').checked;
   pc.maxAge = +document.querySelector('input[name=age]:checked').value;
   pc.unknown = document.querySelector('input[name=unk]:checked').value;
   pc.custom = $('pcWords').value; pc.tmdb = $('pcTmdb').value.trim();

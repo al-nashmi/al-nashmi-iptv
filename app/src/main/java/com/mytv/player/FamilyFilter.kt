@@ -20,7 +20,12 @@ object FamilyFilter {
         adult = list("adult")
         music = list("music")
         allow = list("allow")
+        suggested = json.getJSONArray("suggested").let { a -> (0 until a.length()).joinToString(", ") { a.getString(it) } }
     }
+
+    /** Suggested extra words, used as the starting value of the parent's own word list. */
+    var suggested = ""
+        private set
 
     /** Lower-cases and folds Arabic letter variants and diacritics so spelling differences still match. */
     fun normalize(s: String): String = s.lowercase()
@@ -50,15 +55,14 @@ object FamilyFilter {
     fun isAdult(name: String?): Boolean =
         !name.isNullOrBlank() && normalize(name).let { n -> adult.any { it.containsMatchIn(n) } }
 
-    /** True when a name should be hidden under the current parental settings. */
+    /** True when a name must be hidden. Adult and music/dance blocking is permanent and has no switch. */
     fun blocks(name: String?, adultFlag: Boolean = false): Boolean {
-        if (!Prefs.filterOn) return false
         if (adultFlag) return true
         if (name.isNullOrBlank()) return false
         val n = normalize(name)
         if (adult.any { it.containsMatchIn(n) }) return true
         if (customWords().any { it.containsMatchIn(n) }) return true
-        if (Prefs.blockMusic && music.any { it.containsMatchIn(n) } && allow.none { it.containsMatchIn(n) }) return true
+        if (music.any { it.containsMatchIn(n) } && allow.none { it.containsMatchIn(n) }) return true
         return false
     }
 }

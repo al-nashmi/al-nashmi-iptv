@@ -24,6 +24,14 @@
     "dj", "deejay", "concert", "concerts", "حفلات", "حفلة",
     "संगीत", "गाने", "नृत्य", "音乐", "音楽", "음악"
   ],
+  "_suggested_note": "Starting value of the parent's editable word list: gambling, revealing fashion, dating/nudity reality shows, horror, alcohol and night clubs.",
+  "suggested": [
+    "casino", "poker", "gambling", "betting", "bet365", "1xbet", "sportsbook", "قمار", "كازينو", "مراهنات", "رهانات", "kumar", "казино",
+    "fashion tv", "fashiontv", "ftv", "lingerie", "bikini", "swimsuit", "victoria's secret", "بكيني", "ملابس داخليه", "مايوه",
+    "dating", "love island", "temptation island", "too hot to handle", "ex on the beach", "naked", "nude", "nudity", "مواعده", "عاري", "عراه",
+    "horror", "horreur", "zombie", "zombies", "slasher", "gore", "exorcist", "رعب", "korku", "ужас", "ужасы",
+    "nightclub", "night club", "alcohol", "خمور", "ملاهي ليليه"
+  ],
   "allow": [
     "quran", "koran", "qur'an", "قران", "القران", "قرءان", "تلاوه", "تلاوة", "اذاعه القران", "اذان", "makkah", "مكه", "مكة", "madinah", "المدينه"
   ]

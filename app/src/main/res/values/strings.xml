@@ -51,8 +51,7 @@
     <string name="save">حفظ</string>
     <string name="saved">تم الحفظ</string>
 
-    <string name="filter_on">حظر القنوات والأفلام الإباحية (بكل اللغات)</string>
-    <string name="block_music">حظر قنوات الأغاني والرقص والكليبات</string>
+    <string name="always_blocked">🔒 المحتوى الإباحي وقنوات الأغاني والرقص والكليبات محظورة دائماً بكل اللغات، وما يمكن فتحها.</string>
     <string name="warn_mature">تنبيه قبل تشغيل أي فيلم أو مسلسل مصنّف +13</string>
     <string name="age_label">العمر المسموح للأفلام والمسلسلات:</string>
     <string name="age_all">للجميع</string>
@@ -64,6 +63,6 @@
     <string name="unknown_allow">اسمح</string>
     <string name="unknown_warn">نبّه</string>
     <string name="unknown_block">امنع</string>
-    <string name="custom_words_label">كلمات إضافية للحظر (افصل بينها بفاصلة):</string>
+    <string name="custom_words_label">كلمات إضافية للحظر (القائمة المقترحة، وتقدر تضيف أو تحذف، وافصل بين الكلمات بفاصلة):</string>
     <string name="tmdb_label">مفتاح TMDB (اختياري، مجاني من themoviedb.org) لمعرفة تصنيف الأفلام اللي ما لها تصنيف عند مزود الخدمة:</string>
 </resources>
