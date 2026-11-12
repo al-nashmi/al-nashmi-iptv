@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>مشغل التلفزيون</title>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
+<style>
+  :root { --bg:#0F1218; --panel:#1B2029; --accent:#2F80ED; --sel:#33405A; --text:#fff; --dim:#9AA3B2; --err:#FF6B6B; --gold:#F2C94C; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui, "Segoe UI", Tahoma, sans-serif; height:100vh; overflow:hidden; }
+  .screen { display:none; height:100vh; }
+  .screen.on { display:flex; }
+  button, input { font:inherit; color:inherit; }
+  :focus-visible { outline:3px solid var(--text); outline-offset:2px; }
+  .center { flex-direction:column; align-items:center; justify-content:center; padding:32px; }
+  h1 { font-size:36px; margin:0; }
+  .dim { color:var(--dim); }
+  .big { width:220px; height:130px; margin:12px; border:0; border-radius:14px; background:var(--panel); font-size:24px; cursor:pointer; }
+  .big:hover, .big:focus { background:var(--accent); }
+  .small { padding:14px 32px; border:0; border-radius:14px; background:var(--panel); font-size:18px; cursor:pointer; }
+  .small:hover, .small:focus { background:var(--accent); }
+  .form { width:min(560px, 100%); margin-top:24px; }
+  .input { width:100%; height:52px; margin-top:12px; padding:0 16px; border:0; border-radius:10px; background:var(--panel); font-size:18px; direction:ltr; text-align:left; }
+  .input:focus { outline:3px solid var(--accent); }
+  .radios label { display:inline-block; margin-inline-end:20px; padding:8px; cursor:pointer; }
+  .err { color:var(--err); margin-top:16px; text-align:center; min-height:24px; }
+  .browse { padding:24px; gap:16px; }
+  .side { flex:1; background:var(--panel); padding:12px; display:flex; flex-direction:column; min-width:0; border-radius:10px; }
+  .main { flex:2.4; display:flex; flex-direction:column; min-width:0; }
+  .side h2 { margin:0 8px 12px; font-size:26px; display:flex; align-items:center; gap:10px; }
+  .back { border:0; background:none; font-size:22px; cursor:pointer; color:var(--dim); }
+  .list { flex:1; overflow-y:auto; position:relative; }
+  .row { display:flex; align-items:center; gap:14px; width:100%; padding:10px 14px; margin:2px 0; border:0; border-radius:8px; background:transparent; font-size:18px; text-align:start; cursor:pointer; }
+  .row:hover, .row:focus { background:var(--accent); outline:none; }
+  .row.sel { background:var(--sel); }
+  .row img { width:64px; height:40px; object-fit:contain; flex:none; }
+  .row .name { flex:1; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+  .row .star { color:var(--gold); }
+  .status { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--dim); font-size:18px; text-align:center; padding:24px; pointer-events:none; }
+  #player { background:#000; position:fixed; inset:0; z-index:5; }
+  #player video { width:100%; height:100%; background:#000; }
+  #pinfo, #perr { position:absolute; background:#000c; padding:12px 20px; font-size:22px; display:none; }
+  #pinfo { top:32px; inset-inline-start:32px; }
+  #perr { top:50%; left:50%; transform:translate(-50%,-50%); color:var(--err); }
+  #phelp { position:absolute; bottom:16px; inset-inline-start:16px; color:var(--dim); font-size:14px; background:#0008; padding:6px 10px; border-radius:6px; }
+  @media (max-width: 700px) { .browse { flex-direction:column; } .big { width:140px; height:90px; font-size:18px; } }
+</style>
+</head>
+<body>
+
+<section id="login" class="screen center">
+  <h1>إضافة حساب</h1>
+  <div class="form">
+    <div class="radios">
+      <label><input type="radio" name="type" value="xtream" checked> Xtream Codes</label>
+      <label><input type="radio" name="type" value="m3u"> رابط M3U</label>
+    </div>
+    <div id="xbox">
+      <input class="input" id="server" placeholder="http://example.com:8080">
+      <input class="input" id="user" placeholder="Username" autocomplete="off">
+      <input class="input" id="pass" placeholder="Password" type="password" autocomplete="off">
+      <div class="radios" style="margin-top:12px">
+        <span class="dim">صيغة البث المباشر:</span>
+        <label><input type="radio" name="fmt" value="ts" checked> TS</label>
+        <label><input type="radio" name="fmt" value="m3u8"> HLS (m3u8)</label>
+      </div>
+    </div>
+    <div id="mbox" style="display:none">
+      <input class="input" id="m3u" placeholder="http://.../playlist.m3u">
+    </div>
+    <button class="small" id="btnLogin" style="width:100%; margin-top:24px">دخول</button>
+    <div class="err" id="lerr"></div>
+  </div>
+</section>
+
+<section id="home" class="screen center">
+  <h1>مشغل التلفزيون</h1>
+  <div class="dim" id="accInfo" style="margin-top:8px"></div>
+  <div style="margin-top:40px; display:flex; flex-wrap:wrap; justify-content:center">
+    <button class="big" data-kind="LIVE">البث المباشر</button>
+    <button class="big xonly" data-kind="MOVIES">الأفلام</button>
+    <button class="big xonly" data-kind="SERIES">المسلسلات</button>
+  </div>
+  <button class="small" id="btnAcc" style="margin-top:32px">تغيير الحساب</button>
+</section>
+
+<section id="browse" class="screen browse">
+  <div class="side">
+    <h2><button class="back" data-back="home">→</button><span id="btitle"></span></h2>
+    <div class="list" id="cats"></div>
+  </div>
+  <div class="main">
+    <input class="input" id="search" placeholder="بحث…" style="margin-top:0; direction:rtl; text-align:right">
+    <div class="list" id="items" style="margin-top:12px"><div class="status" id="bstatus"></div></div>
+  </div>
+</section>
+
+<section id="series" class="screen browse">
+  <div class="side">
+    <h2><button class="back" data-back="browse">→</button><span id="stitle"></span></h2>
+    <div class="list" id="seasons"></div>
+  </div>
+  <div class="main">
+    <div class="list" id="episodes"><div class="status" id="sstatus"></div></div>
+  </div>
+</section>
+
+<section id="player" class="screen">
+  <video id="video" controls autoplay></video>
+  <div id="pinfo"></div>
+  <div id="perr"></div>
+  <div id="phelp">↑ / ↓ تبديل القناة · Esc رجوع · ضغط مطوّل/كلك يمين على قناة = مفضلة</div>
+</section>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const raw = (u) => '/p?raw=1&url=' + encodeURIComponent(u);
+const prox = (u) => '/p?url=' + encodeURIComponent(u);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+
+let acc = store.get('acc', null);
+let favs = new Set(store.get('favs', []));
+let cache = {};
+let kind = 'LIVE', cats = [], catItems = [], shown = [], curCat = null;
+let queue = [], qi = 0, qlive = false, hls = null, mts = null, prevScreen = 'browse';
+
+function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id)); }
+function describe(e) { return 'حدث خطأ: ' + (e && e.message || e); }
+
+// ---- data (same logic as Repo.kt) ----
+const base = () => acc.server.replace(/\/+$/, '');
+async function getText(u) { const r = await fetch(raw(u)); if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); }
+async function api(action, extra = '') {
+  const u = `${base()}/player_api.php?username=${encodeURIComponent(acc.user)}&password=${encodeURIComponent(acc.pass)}` + (action ? '&action=' + action : '') + extra;
+  const t = await getText(u);
+  try { return JSON.parse(t); } catch { throw new Error('رد السيرفر غير مفهوم'); }
+}
+async function doLogin() {
+  if (acc.type === 'm3u') {
+    const items = await allItems('LIVE');
+    if (!items.length) return ['القائمة فارغة أو الرابط غير صحيح.', ''];
+    return [null, items.length + ' قناة'];
+  }
+  const j = await api(null);
+  const ui = j && j.user_info;
+  if (!ui) return ['رد السيرفر غير مفهوم. تأكد من رابط السيرفر.', ''];
+  if (String(ui.auth) !== '1') return ['اسم المستخدم أو كلمة المرور غير صحيحة.', ''];
+  if (ui.status && ui.status.toLowerCase() !== 'active') return [`الاشتراك غير فعّال (${ui.status}).`, ''];
+  const exp = parseInt(ui.exp_date);
+  return [null, exp > 0 ? 'ينتهي الاشتراك: ' + new Date(exp * 1000).toISOString().slice(0, 10) : 'اشتراك بدون تاريخ انتهاء'];
+}
+async function allItems(k) {
+  if (cache[k]) return cache[k];
+  let list;
+  if (acc.type === 'm3u') list = parseM3u(await getText(acc.m3u));
+  else {
+    const action = { LIVE: 'get_live_streams', MOVIES: 'get_vod_streams', SERIES: 'get_series' }[k];
+    const arr = await api(action);
+    list = (Array.isArray(arr) ? arr : []).map(o => k === 'SERIES'
+      ? { id: String(o.series_id), name: o.name, logo: o.cover, cat: String(o.category_id), kind: k }
+      : { id: String(o.stream_id), name: o.name, logo: o.stream_icon, cat: String(o.category_id), kind: k, ext: o.container_extension || 'mp4' });
+  }
+  return cache[k] = list;
+}
+async function categories(k) {
+  if (acc.type === 'm3u') return [...new Set((await allItems(k)).map(i => i.cat))].map(c => ({ id: c, name: c }));
+  const action = { LIVE: 'get_live_categories', MOVIES: 'get_vod_categories', SERIES: 'get_series_categories' }[k];
+  const arr = await api(action);
+  return (Array.isArray(arr) ? arr : []).map(o => ({ id: String(o.category_id), name: o.category_name }));
+}
+async function items(k, cat) {
+  const all = await allItems(k);
+  if (cat === '__all__') return all;
+  if (cat === '__fav__') return all.filter(i => favs.has(i.kind + ':' + i.id));
+  return all.filter(i => i.cat === cat);
+}
+async function seriesInfo(id) {
+  const j = await api('get_series_info', '&series_id=' + id);
+  const seasons = [];
+  const add = (key, arr) => {
+    const eps = (arr || []).map(e => ({ id: String(e.id), name: e.title || ('الحلقة ' + e.episode_num), logo: e.info && e.info.movie_image, kind: 'EPISODE', ext: e.container_extension || 'mp4' }));
+    if (eps.length) seasons.push({ name: 'الموسم ' + key, eps });
+  };
+  const eps = j.episodes;
+  if (Array.isArray(eps)) eps.forEach((a, i) => add(i + 1, a));
+  else if (eps) Object.keys(eps).sort((a, b) => a - b).forEach(k => add(k, eps[k]));
+  return seasons;
+}
+function playUrl(i) {
+  if (i.url) return i.url;
+  const u = encodeURIComponent(acc.user), p = encodeURIComponent(acc.pass);
+  if (i.kind === 'LIVE') return `${base()}/live/${u}/${p}/${i.id}.${acc.format}`;
+  if (i.kind === 'MOVIES') return `${base()}/movie/${u}/${p}/${i.id}.${i.ext}`;
+  return `${base()}/series/${u}/${p}/${i.id}.${i.ext}`;
+}
+function parseM3u(text) {
+  const out = []; let name = '', logo = null, group = 'عام', extGroup = null;
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (/^#EXTINF/i.test(line)) {
+      const attrs = {}; line.replace(/([\w-]+)="([^"]*)"/g, (_, k, v) => attrs[k.toLowerCase()] = v);
+      logo = attrs['tvg-logo'] || null;
+      group = attrs['group-title'] || extGroup || 'عام';
+      const c = line.indexOf(',', Math.max(0, line.lastIndexOf('"')));
+      name = c >= 0 ? line.slice(c + 1).trim() : '';
+    } else if (/^#EXTGRP:/i.test(line)) extGroup = line.slice(8).trim();
+    else if (line && !line.startsWith('#')) {
+      out.push({ id: String(out.length), name: name || ('قناة ' + (out.length + 1)), logo, cat: group, kind: 'LIVE', url: line });
+      name = ''; logo = null; extGroup = null;
+    }
+  }
+  return out;
+}
+
+// ---- rows ----
+function row(label, opts = {}) {
+  const b = document.createElement('button');
+  b.className = 'row';
+  if (opts.img !== undefined) {
+    const im = document.createElement('img');
+    im.loading = 'lazy';
+    im.src = opts.img || 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#5A6375" d="M21 3H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5v2h8v-2h5a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 14H3V5h18z"/></svg>');
+    im.onerror = () => { im.style.visibility = 'hidden'; };
+    b.appendChild(im);
+  }
+  const n = document.createElement('span'); n.className = 'name'; n.textContent = label; b.appendChild(n);
+  const s = document.createElement('span'); s.className = 'star'; s.textContent = opts.star ? '★' : ''; b.appendChild(s);
+  return b;
+}
+function fillList(el, statusEl, rows) {
+  [...el.querySelectorAll('.row')].forEach(r => r.remove());
+  const frag = document.createDocumentFragment();
+  rows.slice(0, 3000).forEach(r => frag.appendChild(r)); // keep the DOM light on huge lists
+  el.appendChild(frag);
+}
+function setStatus(el, text) { el.textContent = text || ''; el.style.display = text ? 'flex' : 'none'; }
+
+// ---- screens ----
+function goHome() {
+  $('accInfo').textContent = (acc.type === 'm3u' ? 'قائمة M3U' : 'Xtream: ' + acc.user) + (acc.info ? '  •  ' + acc.info : '');
+  document.querySelectorAll('.xonly').forEach(b => b.style.display = acc.type === 'm3u' ? 'none' : '');
+  show('home');
+  document.querySelector('.big').focus();
+}
+
+async function openBrowse(k) {
+  kind = k; curCat = null; $('search').value = '';
+  $('btitle').textContent = { LIVE: 'البث المباشر', MOVIES: 'الأفلام', SERIES: 'المسلسلات' }[k];
+  show('browse');
+  fillList($('cats'), null, []); fillList($('items'), null, []);
+  setStatus($('bstatus'), 'جاري التحميل…');
+  try {
+    cats = [{ id: '__all__', name: 'الكل' }, { id: '__fav__', name: '★ المفضلة' }, ...await categories(k)];
+    fillList($('cats'), null, cats.map((c, i) => {
+      const r = row(c.name); r.dataset.i = i;
+      r.onclick = () => selectCat(i);
+      return r;
+    }));
+    selectCat(0);
+    $('cats').querySelector('.row').focus();
+  } catch (e) { setStatus($('bstatus'), describe(e)); }
+}
+
+async function selectCat(i) {
+  const c = cats[i]; curCat = c.id;
+  $('cats').querySelectorAll('.row').forEach(r => r.classList.toggle('sel', +r.dataset.i === i));
+  setStatus($('bstatus'), 'جاري التحميل…');
+  try {
+    const list = await items(kind, c.id);
+    if (curCat !== c.id) return;
+    catItems = list; applyFilter();
+  } catch (e) { setStatus($('bstatus'), describe(e)); }
+}
+
+function applyFilter() {
+  const q = $('search').value.trim().toLowerCase();
+  shown = q ? catItems.filter(i => (i.name || '').toLowerCase().includes(q)) : catItems;
+  fillList($('items'), null, shown.map((it, idx) => {
+    const r = row(it.name, { img: it.logo || null, star: favs.has(it.kind + ':' + it.id) });
+    r.onclick = () => openItem(idx);
+    r.oncontextmenu = (ev) => { ev.preventDefault(); toggleFav(it, r); };
+    return r;
+  }));
+  $('items').scrollTop = 0;
+  setStatus($('bstatus'), shown.length ? '' : (curCat === '__fav__' && !q ? 'ما فيه مفضلة. كلك يمين على أي قناة لإضافتها.' : 'لا يوجد محتوى'));
+}
+
+function toggleFav(it, r) {
+  const k = it.kind + ':' + it.id;
+  favs.has(k) ? favs.delete(k) : favs.add(k);
+  store.set('favs', [...favs]);
+  r.querySelector('.star').textContent = favs.has(k) ? '★' : '';
+}
+
+function openItem(idx) {
+  const it = shown[idx];
+  if (it.kind === 'SERIES') return openSeries(it);
+  play(shown, idx, it.kind === 'LIVE', 'browse');
+}
+
+async function openSeries(it) {
+  $('stitle').textContent = it.name;
+  show('series');
+  fillList($('seasons'), null, []); fillList($('episodes'), null, []);
+  setStatus($('sstatus'), 'جاري التحميل…');
+  try {
+    const seasons = await seriesInfo(it.id);
+    if (!seasons.length) return setStatus($('sstatus'), 'لا يوجد محتوى');
+    const pick = (i) => {
+      $('seasons').querySelectorAll('.row').forEach((r, j) => r.classList.toggle('sel', j === i));
+      const eps = seasons[i].eps;
+      fillList($('episodes'), null, eps.map((e, j) => { const r = row(e.name, { img: e.logo || null }); r.onclick = () => play(eps, j, false, 'series'); return r; }));
+      setStatus($('sstatus'), '');
+    };
+    fillList($('seasons'), null, seasons.map((s, i) => { const r = row(s.name); r.onclick = () => pick(i); return r; }));
+    pick(0);
+    $('seasons').querySelector('.row').focus();
+  } catch (e) { setStatus($('sstatus'), describe(e)); }
+}
+
+// ---- player ----
+let infoTimer;
+function stopPlayer() {
+  const v = $('video');
+  if (hls) { hls.destroy(); hls = null; }
+  if (mts) { try { mts.destroy(); } catch {} mts = null; }
+  v.removeAttribute('src'); v.load();
+}
+function play(list, idx, live, from) {
+  queue = list; qi = idx; qlive = live; prevScreen = from;
+  show('player');
+  startCurrent();
+}
+function startCurrent() {
+  stopPlayer();
+  const v = $('video'), it = queue[qi], url = playUrl(it);
+  $('perr').style.display = 'none';
+  const fail = (msg) => { $('perr').textContent = 'تعذر التشغيل' + (msg ? ' (' + msg + ')' : ''); $('perr').style.display = 'block'; };
+  if (/\.m3u8(\?|$)/i.test(url) && window.Hls && Hls.isSupported()) {
+    hls = new Hls(); hls.loadSource(prox(url)); hls.attachMedia(v);
+    hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) fail(d.details); });
+  } else if (/\.ts(\?|$)/i.test(url) && window.mpegts && mpegts.isSupported()) {
+    mts = mpegts.createPlayer({ type: 'mpegts', isLive: qlive, url: location.origin + prox(url) }, { enableStashBuffer: false });
+    mts.attachMediaElement(v); mts.load();
+    mts.on(mpegts.Events.ERROR, (t, d) => fail(d || t));
+  } else {
+    v.src = prox(url);
+    v.onerror = () => fail(v.error && v.error.message);
+  }
+  v.play().catch(() => {});
+  $('pinfo').textContent = qlive ? `${qi + 1}  ${it.name}` : it.name;
+  $('pinfo').style.display = 'block';
+  clearTimeout(infoTimer); infoTimer = setTimeout(() => $('pinfo').style.display = 'none', 4000);
+}
+function zap(step) {
+  if (!qlive && (qi + step < 0 || qi + step >= queue.length)) return;
+  qi = (qi + step + queue.length) % queue.length;
+  startCurrent();
+}
+function closePlayer() { stopPlayer(); show(prevScreen); }
+
+document.addEventListener('keydown', (e) => {
+  if (!$('player').classList.contains('on')) {
+    if (e.key === 'Escape' || (e.key === 'Backspace' && document.activeElement.tagName !== 'INPUT')) {
+      if ($('series').classList.contains('on')) show('browse');
+      else if ($('browse').classList.contains('on')) goHome();
+    }
+    return;
+  }
+  if (e.key === 'Escape' || e.key === 'Backspace') { e.preventDefault(); closePlayer(); }
+  else if (qlive && e.key === 'ArrowUp') { e.preventDefault(); zap(1); }
+  else if (qlive && e.key === 'ArrowDown') { e.preventDefault(); zap(-1); }
+  else if (e.key === 'Enter') { $('pinfo').style.display = 'block'; clearTimeout(infoTimer); infoTimer = setTimeout(() => $('pinfo').style.display = 'none', 4000); }
+});
+
+// ---- wiring ----
+document.querySelectorAll('input[name=type]').forEach(r => r.onchange = () => {
+  const m = document.querySelector('input[name=type]:checked').value === 'm3u';
+  $('xbox').style.display = m ? 'none' : ''; $('mbox').style.display = m ? '' : 'none';
+});
+const withScheme = (u) => /^https?:\/\//i.test(u.trim()) ? u.trim() : 'http://' + u.trim();
+$('btnLogin').onclick = async () => {
+  const m = document.querySelector('input[name=type]:checked').value === 'm3u';
+  let a;
+  if (m) {
+    if (!$('m3u').value.trim()) return $('lerr').textContent = 'اكتب رابط قائمة M3U.';
+    a = { type: 'm3u', m3u: withScheme($('m3u').value) };
+  } else {
+    if (!$('server').value.trim() || !$('user').value.trim() || !$('pass').value.trim()) return $('lerr').textContent = 'اكتب رابط السيرفر واسم المستخدم وكلمة المرور.';
+    a = { type: 'xtream', server: withScheme($('server').value), user: $('user').value.trim(), pass: $('pass').value.trim(), format: document.querySelector('input[name=fmt]:checked').value };
+  }
+  $('lerr').textContent = 'جاري التحقق…'; $('btnLogin').disabled = true;
+  const prev = acc; acc = a; cache = {};
+  try {
+    const [err, info] = await doLogin();
+    if (err) { acc = prev; $('lerr').textContent = err; }
+    else { acc.info = info; store.set('acc', acc); $('lerr').textContent = ''; goHome(); }
+  } catch (e) { acc = prev; $('lerr').textContent = describe(e); }
+  $('btnLogin').disabled = false;
+};
+$('btnAcc').onclick = () => {
+  if (acc) { $('server').value = acc.server || ''; $('user').value = acc.user || ''; $('pass').value = acc.pass || ''; $('m3u').value = acc.m3u || ''; }
+  show('login');
+};
+document.querySelectorAll('.big').forEach(b => b.onclick = () => openBrowse(b.dataset.kind));
+document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => b.dataset.back === 'home' ? goHome() : show('browse'));
+let searchTimer;
+$('search').oninput = () => { clearTimeout(searchTimer); searchTimer = setTimeout(applyFilter, 200); };
+
+if (acc) goHome(); else show('login');
+</script>
+</body>
+</html>

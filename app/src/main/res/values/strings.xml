@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">مشغل التلفزيون</string>
+    <string name="live">البث المباشر</string>
+    <string name="movies">الأفلام</string>
+    <string name="series">المسلسلات</string>
+    <string name="change_account">تغيير الحساب</string>
+    <string name="all">الكل</string>
+    <string name="favorites">★ المفضلة</string>
+    <string name="search">بحث…</string>
+    <string name="loading">جاري التحميل…</string>
+    <string name="empty">لا يوجد محتوى</string>
+    <string name="no_favorites">ما فيه مفضلة. اضغط مطولاً على زر OK فوق أي قناة لإضافتها.</string>
+    <string name="fav_added">أضيفت للمفضلة</string>
+    <string name="fav_removed">حُذفت من المفضلة</string>
+    <string name="play_error">تعذر التشغيل (%1$s)</string>
+
+    <string name="add_account">إضافة حساب</string>
+    <string name="xtream">Xtream Codes</string>
+    <string name="m3u">رابط M3U</string>
+    <string name="server_hint">رابط السيرفر، مثال: http://example.com:8080</string>
+    <string name="user_hint">اسم المستخدم</string>
+    <string name="pass_hint">كلمة المرور</string>
+    <string name="m3u_hint">رابط قائمة M3U</string>
+    <string name="format_label">صيغة البث المباشر:</string>
+    <string name="login">دخول</string>
+</resources>
